@@ -1,0 +1,41 @@
+# 编译输出
+/bin/
+/build/
+
+# 依赖目录
+/vendor/
+
+# 测试文件
+*.test
+*.out
+.ss
+# 配置文件
+config.yml
+.env
+.env.local
+.env.*.local
+
+# IDE 相关
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# 日志文件
+*.log
+logs/
+
+# 数据库文件
+*.db
+*.sqlite
+*.sqlite3
+
+# 临时文件
+/tmp/
+*.tmp
+*.temp
+
+# 其他
+coverage.txt
+profile.out 

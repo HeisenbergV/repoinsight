@@ -1,0 +1,217 @@
+basePath: /api/v1
+definitions:
+  api.Meta:
+    properties:
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+    type: object
+  api.Repository:
+    properties:
+      ai_analysis:
+        description: AI 分析后的介绍
+        type: string
+      created_at:
+        type: string
+      default_branch:
+        description: 默认分支
+        type: string
+      description:
+        description: 项目描述
+        type: string
+      forks:
+        description: 分支数
+        type: integer
+      full_name:
+        description: 项目全名，如 "owner/repo"
+        type: string
+      has_downloads:
+        description: 是否启用下载
+        type: boolean
+      has_issues:
+        description: 是否启用问题跟踪
+        type: boolean
+      has_pages:
+        description: 是否启用 Pages
+        type: boolean
+      has_projects:
+        description: 是否启用项目
+        type: boolean
+      has_wiki:
+        description: 是否启用 Wiki
+        type: boolean
+      id:
+        type: integer
+      is_archived:
+        description: 是否已归档
+        type: boolean
+      is_template:
+        description: 是否是模板仓库
+        type: boolean
+      language:
+        description: 主要编程语言
+        type: string
+      last_pushed_at:
+        description: 最后推送时间
+        type: string
+      license:
+        description: 许可证
+        type: string
+      name:
+        description: 项目名称
+        type: string
+      open_issues:
+        description: 开放问题数
+        type: integer
+      owner:
+        description: 项目所有者
+        type: string
+      readme:
+        description: 原始 README 内容
+        type: string
+      size:
+        description: 仓库大小（KB）
+        type: integer
+      stars:
+        description: 星标数
+        type: integer
+      topics:
+        description: 项目标签，JSON 格式存储
+        type: string
+      updated_at:
+        type: string
+      url:
+        description: GitHub 项目地址
+        type: string
+      watchers:
+        description: 关注者数
+        type: integer
+    type: object
+  api.Response:
+    properties:
+      data: {}
+      meta:
+        $ref: '#/definitions/api.Meta'
+    type: object
+  api.SystemStatus:
+    properties:
+      last_updated:
+        type: string
+      status:
+        type: string
+      total_repositories:
+        type: integer
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: RepoInsight API 文档
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: RepoInsight API
+  version: "1.0"
+paths:
+  /api/v1/repositories:
+    get:
+      consumes:
+      - application/json
+      description: 获取所有已分析的仓库列表
+      parameters:
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: 每页数量
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Response'
+      summary: 获取仓库列表
+      tags:
+      - repositories
+  /api/v1/repositories/{id}:
+    get:
+      consumes:
+      - application/json
+      description: 获取指定仓库的详细信息
+      parameters:
+      - description: 仓库ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Repository'
+      summary: 获取仓库详情
+      tags:
+      - repositories
+  /api/v1/repositories/search:
+    get:
+      consumes:
+      - application/json
+      description: 根据关键词搜索仓库
+      parameters:
+      - description: 搜索关键词
+        in: query
+        name: keyword
+        required: true
+        type: string
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: 每页数量
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Response'
+      summary: 搜索仓库
+      tags:
+      - repositories
+  /api/v1/status:
+    get:
+      consumes:
+      - application/json
+      description: 获取系统运行状态和统计信息
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.SystemStatus'
+      summary: 获取系统状态
+      tags:
+      - system
+schemes:
+- http
+swagger: "2.0"

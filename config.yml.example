@@ -1,0 +1,30 @@
+database:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: your_password
+  name: repoinsight
+
+api:
+  github:
+    token: your_github_token
+  deepseek:
+    api_key: your_deepseek_api_key
+
+app:
+  search_keyword: topic:ai
+  interval_hours: 24
+  max_repos_per_page: 5
+  port: 8080
+
+log:
+  level: info
+  format: text
+  output: stdout
+  file:
+    path: logs
+    name: app.log
+    max_size: 100
+    max_backups: 3
+    max_age: 7
+    compress: true 
