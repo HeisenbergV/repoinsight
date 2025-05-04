@@ -128,24 +128,6 @@ app:
   max_repos_per_search: 100
 ```
 
-## 🔍 使用示例
-
-1. **查看最新分析的项目**
-```sql
-SELECT full_name, description, analysis 
-FROM repositories 
-ORDER BY created_at DESC 
-LIMIT 10;
-```
-
-2. **搜索特定技术栈的项目**
-```sql
-SELECT full_name, analysis 
-FROM repositories 
-WHERE analysis LIKE '%Python%' 
-AND analysis LIKE '%Machine Learning%';
-```
-
 ## ⚠️ 注意事项
 
 1. **API 限制**
@@ -163,21 +145,6 @@ AND analysis LIKE '%Machine Learning%';
    - 合理设置数据库连接池
    - 定期清理过期数据
 
-## 🤝 贡献指南
-
-欢迎提交 Issue 和 Pull Request 来改进项目。在提交代码前，请确保：
-
-1. 代码符合 Go 代码规范
-2. 添加必要的测试用例
-3. 更新相关文档
-
 ## 📝 许可证
 
 MIT License
-
-## 📞 联系方式
-
-如有问题或建议，请通过以下方式联系：
-
-- 提交 Issue
-- 发送邮件至：your-email@example.com 

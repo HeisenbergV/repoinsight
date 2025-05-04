@@ -106,6 +106,12 @@ func (c *Crawler) processRepository(repo *github.Repository) error {
 	// 转换标签为 JSON
 	topics, _ := json.Marshal(repo.Topics)
 
+	// 获取 License 名称
+	var licenseName string
+	if license := repo.GetLicense(); license != nil {
+		licenseName = license.GetName()
+	}
+
 	// 创建或更新仓库记录
 	repository := &api.Repository{
 		FullName:      repo.GetFullName(),
@@ -123,7 +129,7 @@ func (c *Crawler) processRepository(repo *github.Repository) error {
 		CreatedAt:     repo.GetCreatedAt().Time,
 		UpdatedAt:     repo.GetUpdatedAt().Time,
 		IsArchived:    repo.GetArchived(),
-		License:       repo.GetLicense().GetName(),
+		License:       licenseName,
 		DefaultBranch: repo.GetDefaultBranch(),
 		OpenIssues:    repo.GetOpenIssuesCount(),
 		Watchers:      repo.GetWatchersCount(),

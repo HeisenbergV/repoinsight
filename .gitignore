@@ -8,7 +8,7 @@
 # 测试文件
 *.test
 *.out
-.ss
+config.yml
 # 配置文件
 config.yml
 .env

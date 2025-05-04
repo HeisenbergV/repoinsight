@@ -105,7 +105,7 @@ func (h *Handler) SearchRepositories(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Success 200 {object} SystemStatus
-// @Router /api/v1/status [get]
+// @Router /api/v1/system/status [get]
 func (h *Handler) GetStatus(c *gin.Context) {
 	var totalRepos int64
 	var lastUpdated Repository

@@ -1,25 +1,8 @@
 {
-    "schemes": [
-        "http"
-    ],
     "swagger": "2.0",
     "info": {
-        "description": "RepoInsight API 文档",
-        "title": "RepoInsight API",
-        "termsOfService": "http://swagger.io/terms/",
-        "contact": {
-            "name": "API Support",
-            "url": "http://www.swagger.io/support",
-            "email": "support@swagger.io"
-        },
-        "license": {
-            "name": "Apache 2.0",
-            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
-        },
-        "version": "1.0"
+        "contact": {}
     },
-    "host": "localhost:8080",
-    "basePath": "/api/v1",
     "paths": {
         "/api/v1/repositories": {
             "get": {
@@ -138,7 +121,7 @@
                 }
             }
         },
-        "/api/v1/status": {
+        "/api/v1/system/status": {
             "get": {
                 "description": "获取系统运行状态和统计信息",
                 "consumes": [

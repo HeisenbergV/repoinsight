@@ -1,7 +1,7 @@
 package api
 
 import (
-	_ "github.com/HeisenbergV/repoinsight/api/docs"
+	_ "github.com/HeisenbergV/repoinsight/docs"
 )
 
 // @title RepoInsight API
