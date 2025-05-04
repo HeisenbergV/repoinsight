@@ -2,6 +2,7 @@ package logger
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -63,7 +64,12 @@ func Init(config Config) error {
 			MaxAge:     config.FileConfig.MaxAge,     // 保留的最大天数
 			Compress:   config.FileConfig.Compress,   // 是否压缩
 		}
-		log.SetOutput(logFile)
+
+		// 同时输出到文件和控制台
+		log.SetOutput(io.MultiWriter(os.Stdout, logFile))
+	} else {
+		// 只输出到控制台
+		log.SetOutput(os.Stdout)
 	}
 
 	return nil

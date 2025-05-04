@@ -76,27 +76,56 @@ func (h *Handler) GetRepository(c *gin.Context) {
 // @Success 200 {object} Response
 // @Router /api/v1/repositories/search [get]
 func (h *Handler) SearchRepositories(c *gin.Context) {
+	// 获取查询参数
 	keyword := c.Query("keyword")
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
+	limit := c.DefaultQuery("limit", "10")
+	offset := c.DefaultQuery("offset", "0")
 
-	var repositories []Repository
+	// 转换分页参数
+	limitInt, err := strconv.Atoi(limit)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的 limit 参数"})
+		return
+	}
+	offsetInt, err := strconv.Atoi(offset)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的 offset 参数"})
+		return
+	}
+
+	// 构建查询条件
+	query := h.db.Model(&Repository{})
+	if keyword != "" {
+		query = query.Where("full_name LIKE ? OR description LIKE ?",
+			"%"+keyword+"%", "%"+keyword+"%")
+	}
+
+	// 查询总数
 	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "查询总数失败"})
+		return
+	}
 
-	query := h.db.Model(&Repository{}).Where("full_name LIKE ? OR description LIKE ? OR analysis LIKE ?",
-		"%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%")
+	// 查询数据
+	var repositories []Repository
+	if err := query.
+		Select("full_name, created_at, updated_at, ai_analysis, url").
+		Order("updated_at DESC").
+		Limit(limitInt).
+		Offset(offsetInt).
+		Find(&repositories).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "查询仓库失败"})
+		return
+	}
 
-	query.Count(&total)
-	query.Offset((page - 1) * pageSize).Limit(pageSize).Find(&repositories)
+	// 构建响应
+	response := gin.H{
+		"total":        total,
+		"repositories": repositories,
+	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"data": repositories,
-		"meta": gin.H{
-			"total":     total,
-			"page":      page,
-			"page_size": pageSize,
-		},
-	})
+	c.JSON(http.StatusOK, response)
 }
 
 // @Summary 获取系统状态

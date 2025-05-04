@@ -2,7 +2,7 @@ database:
   host: localhost
   port: 5432
   user: postgres
-  password: your_password
+  password: postgres
   name: repoinsight
 
 api:
@@ -10,21 +10,23 @@ api:
     token: your_github_token
   deepseek:
     api_key: your_deepseek_api_key
+    base_url: https://api.deepseek.com/v1/chat/completions
+    interval: 5  # 分析间隔（分钟）
 
 app:
-  search_keyword: topic:ai
+  search_keyword: "language:go stars:>100"
   interval_hours: 24
-  max_repos_per_page: 5
+  max_repos_per_page: 100
   port: 8080
 
 log:
   level: info
-  format: text
-  output: stdout
+  format: json
+  output: file
   file:
     path: logs
-    name: app.log
-    max_size: 100
+    name: repoinsight.log
+    max_size: 100    # MB
     max_backups: 3
-    max_age: 7
+    max_age: 28      # 天
     compress: true 

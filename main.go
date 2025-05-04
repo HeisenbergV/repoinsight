@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	"github.com/HeisenbergV/repoinsight/api"
+	"github.com/HeisenbergV/repoinsight/pkg/ai"
 	"github.com/HeisenbergV/repoinsight/pkg/crawler"
 	"github.com/HeisenbergV/repoinsight/pkg/logger"
 	"gopkg.in/yaml.v3"
@@ -32,7 +32,9 @@ type Config struct {
 			Token string `yaml:"token"`
 		} `yaml:"github"`
 		Deepseek struct {
-			APIKey string `yaml:"api_key"`
+			APIKey   string `yaml:"api_key"`
+			BaseURL  string `yaml:"base_url"`
+			Interval int    `yaml:"interval"`
 		} `yaml:"deepseek"`
 	} `yaml:"api"`
 	App struct {
@@ -72,8 +74,17 @@ func loadConfig() (*Config, error) {
 		config.API.Github.Token = token
 	}
 
+	// 从环境变量读取 Deepseek API Key
+	if apiKey := os.Getenv("DEEPSEEK_API_KEY"); apiKey != "" {
+		config.API.Deepseek.APIKey = apiKey
+	}
+
 	if config.API.Github.Token == "" {
 		return nil, fmt.Errorf("GitHub Token 未设置，请设置 GITHUB_TOKEN 环境变量或在配置文件中设置")
+	}
+
+	if config.API.Deepseek.APIKey == "" {
+		return nil, fmt.Errorf("Deepseek API Key 未设置，请设置 DEEPSEEK_API_KEY 环境变量或在配置文件中设置")
 	}
 
 	return &config, nil
@@ -83,7 +94,8 @@ func main() {
 	// 加载配置
 	config, err := loadConfig()
 	if err != nil {
-		log.Fatal(err)
+		fmt.Printf("加载配置失败: %v\n", err)
+		os.Exit(1)
 	}
 
 	// 初始化日志
@@ -108,9 +120,11 @@ func main() {
 		},
 	}
 	if err := logger.Init(logConfig); err != nil {
-		log.Fatalf("初始化日志失败: %v", err)
+		fmt.Printf("初始化日志失败: %v\n", err)
+		os.Exit(1)
 	}
 
+	fmt.Printf("正在连接数据库...\n")
 	// 连接数据库
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable",
 		config.Database.Host,
@@ -121,13 +135,18 @@ func main() {
 	)
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatalf("连接数据库失败: %v", err)
+		fmt.Printf("连接数据库失败: %v\n", err)
+		os.Exit(1)
 	}
+	fmt.Printf("数据库连接成功\n")
 
 	// 自动迁移数据库表
+	fmt.Printf("正在迁移数据库表...\n")
 	if err := db.AutoMigrate(&api.Repository{}); err != nil {
-		log.Fatalf("迁移数据库失败: %v", err)
+		fmt.Printf("迁移数据库失败: %v\n", err)
+		os.Exit(1)
 	}
+	fmt.Printf("数据库表迁移完成\n")
 
 	// 创建爬虫配置
 	crawlerConfig := &crawler.Config{
@@ -136,8 +155,27 @@ func main() {
 		MaxReposPerPage: config.App.MaxReposPerPage,
 	}
 
+	// 创建 AI 分析器配置
+	analyzerConfig := &ai.Config{
+		APIKey:     config.API.Deepseek.APIKey,
+		APIBaseURL: config.API.Deepseek.BaseURL,
+		BatchSize:  10,
+		Interval:   time.Duration(config.API.Deepseek.Interval) * time.Minute,
+	}
+
 	// 创建爬虫实例
 	c := crawler.NewCrawler(db, crawlerConfig)
+
+	// 创建 AI 分析器实例
+	a := ai.NewAnalyzer(db, analyzerConfig)
+
+	// 启动 AI 分析器
+	go func() {
+		fmt.Printf("启动 AI 分析服务...\n")
+		if err := a.Start(); err != nil {
+			fmt.Printf("启动 AI 分析器失败: %v\n", err)
+		}
+	}()
 
 	// 创建 API 处理器
 	handler := api.NewHandler(db)
@@ -147,7 +185,7 @@ func main() {
 
 	// 创建等待组
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(3) // 增加到 3，因为现在有三个服务
 
 	// 创建退出通道
 	quit := make(chan os.Signal, 1)
@@ -160,36 +198,37 @@ func main() {
 	}
 
 	// 创建爬虫定时器
-	ticker := time.NewTicker(time.Duration(config.App.IntervalHours) * time.Hour)
-	defer ticker.Stop()
+	crawlerTicker := time.NewTicker(time.Duration(config.App.IntervalHours) * time.Hour)
+	defer crawlerTicker.Stop()
 
 	// 启动 API 服务
 	go func() {
 		defer wg.Done()
-		log.Println("启动 API 服务...")
+		fmt.Printf("启动 API 服务...\n")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Printf("API 服务错误: %v", err)
+			fmt.Printf("API 服务错误: %v\n", err)
 		}
 	}()
 
 	// 启动爬虫服务
 	go func() {
 		defer wg.Done()
-		log.Println("启动爬虫服务...")
+		fmt.Printf("启动爬虫服务...\n")
 
 		// 立即执行一次
 		if err := c.Start(); err != nil {
-			log.Printf("爬取失败: %v", err)
+			fmt.Printf("爬取失败: %v\n", err)
 		}
 
 		for {
 			select {
-			case <-ticker.C:
+			case <-crawlerTicker.C:
+				fmt.Printf("开始新一轮爬取...\n")
 				if err := c.Start(); err != nil {
-					log.Printf("爬取失败: %v", err)
+					fmt.Printf("爬取失败: %v\n", err)
 				}
 			case <-quit:
-				log.Println("爬虫服务正在关闭...")
+				fmt.Printf("爬虫服务正在关闭...\n")
 				return
 			}
 		}
@@ -197,21 +236,18 @@ func main() {
 
 	// 等待退出信号
 	<-quit
-	log.Println("正在关闭服务...")
+	fmt.Printf("正在关闭服务...\n")
 
-	// 停止爬虫定时器
-	ticker.Stop()
-
-	// 设置关闭超时
+	// 创建一个带超时的上下文
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// 关闭 HTTP 服务器
+	// 优雅地关闭 HTTP 服务器
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Printf("服务器强制关闭: %v", err)
+		fmt.Printf("服务器关闭出错: %v\n", err)
 	}
 
-	// 等待所有服务关闭
+	// 等待所有服务完成
 	wg.Wait()
-	log.Println("服务已关闭")
+	fmt.Printf("所有服务已关闭\n")
 }

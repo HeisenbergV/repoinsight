@@ -61,3 +61,106 @@
 {"level":"info","msg":"更新仓库: SoraEase/sora-prompt (URL: https://github.com/SoraEase/sora-prompt)","time":"2025-05-04T17:15:02+08:00"}
 {"level":"info","msg":"成功处理仓库: SoraEase/sora-prompt","time":"2025-05-04T17:15:02+08:00"}
 {"level":"info","msg":"爬取完成","time":"2025-05-04T17:15:02+08:00"}
+{"level":"info","msg":"启动 AI 分析服务...","time":"2025-05-04T17:20:48+08:00"}
+{"level":"info","msg":"开始爬取 GitHub 仓库...","time":"2025-05-04T17:20:48+08:00"}
+{"level":"info","msg":"找到 1 个仓库","time":"2025-05-04T17:20:48+08:00"}
+{"level":"info","msg":"正在处理第 1/1 个仓库: 4211421036/MentalHealth","time":"2025-05-04T17:20:48+08:00"}
+{"level":"info","msg":"更新仓库: 4211421036/MentalHealth (URL: https://github.com/4211421036/MentalHealth)","time":"2025-05-04T17:20:49+08:00"}
+{"level":"info","msg":"成功处理仓库: 4211421036/MentalHealth","time":"2025-05-04T17:20:49+08:00"}
+{"level":"info","msg":"爬取完成","time":"2025-05-04T17:20:49+08:00"}
+{"level":"info","msg":"启动 AI 分析服务...","time":"2025-05-04T17:24:17+08:00"}
+{"level":"info","msg":"开始爬取 GitHub 仓库...","time":"2025-05-04T17:24:17+08:00"}
+{"level":"info","msg":"找到 1 个仓库","time":"2025-05-04T17:24:18+08:00"}
+{"level":"info","msg":"正在处理第 1/1 个仓库: asdsadsddas123/freev2raynode","time":"2025-05-04T17:24:18+08:00"}
+{"level":"info","msg":"更新仓库: asdsadsddas123/freev2raynode (URL: https://github.com/asdsadsddas123/freev2raynode)","time":"2025-05-04T17:24:18+08:00"}
+{"level":"info","msg":"成功处理仓库: asdsadsddas123/freev2raynode","time":"2025-05-04T17:24:18+08:00"}
+{"level":"info","msg":"爬取完成","time":"2025-05-04T17:24:18+08:00"}
+{"level":"info","msg":"找到 0 个未分析的仓库","time":"2025-05-04T17:29:17+08:00"}
+{"level":"info","msg":"找到 0 个未分析的仓库","time":"2025-05-04T17:34:17+08:00"}
+{"level":"info","msg":"找到 0 个未分析的仓库","time":"2025-05-04T17:39:17+08:00"}
+{"level":"info","msg":"启动 AI 分析服务...","time":"2025-05-04T17:45:49+08:00"}
+{"level":"info","msg":"开始爬取 GitHub 仓库...","time":"2025-05-04T17:45:49+08:00"}
+{"level":"info","msg":"找到 1 个仓库","time":"2025-05-04T17:45:50+08:00"}
+{"level":"info","msg":"正在处理第 1/1 个仓库: asdsadsddas123/freev2raynode","time":"2025-05-04T17:45:50+08:00"}
+{"level":"info","msg":"更新仓库: asdsadsddas123/freev2raynode (URL: https://github.com/asdsadsddas123/freev2raynode)","time":"2025-05-04T17:45:51+08:00"}
+{"level":"info","msg":"成功处理仓库: asdsadsddas123/freev2raynode","time":"2025-05-04T17:45:51+08:00"}
+{"level":"info","msg":"爬取完成","time":"2025-05-04T17:45:51+08:00"}
+{"level":"info","msg":"开始爬取 GitHub 仓库...","time":"2025-05-04T17:50:46+08:00"}
+{"level":"info","msg":"启动 AI 分析服务...","time":"2025-05-04T17:50:46+08:00"}
+{"level":"info","msg":"找到 1 个仓库","time":"2025-05-04T17:50:47+08:00"}
+{"level":"info","msg":"正在处理第 1/1 个仓库: WitherRbx/ai-agent-langchain-langgraph-convex-clerk-ibm-wxtools-nextjs15","time":"2025-05-04T17:50:47+08:00"}
+{"level":"info","msg":"更新仓库: WitherRbx/ai-agent-langchain-langgraph-convex-clerk-ibm-wxtools-nextjs15 (URL: https://github.com/WitherRbx/ai-agent-langchain-langgraph-convex-clerk-ibm-wxtools-nextjs15)","time":"2025-05-04T17:50:47+08:00"}
+{"level":"info","msg":"成功处理仓库: WitherRbx/ai-agent-langchain-langgraph-convex-clerk-ibm-wxtools-nextjs15","time":"2025-05-04T17:50:47+08:00"}
+{"level":"info","msg":"爬取完成","time":"2025-05-04T17:50:47+08:00"}
+{"level":"info","msg":"启动 AI 分析服务...","time":"2025-05-04T17:57:17+08:00"}
+{"level":"info","msg":"开始爬取 GitHub 仓库...","time":"2025-05-04T17:57:17+08:00"}
+{"level":"info","msg":"找到 1 个仓库","time":"2025-05-04T17:57:18+08:00"}
+{"level":"info","msg":"正在处理第 1/1 个仓库: HACKEDbySUSHI/Local_Deep_Seek","time":"2025-05-04T17:57:18+08:00"}
+{"level":"info","msg":"创建新仓库: HACKEDbySUSHI/Local_Deep_Seek (URL: https://github.com/HACKEDbySUSHI/Local_Deep_Seek)","time":"2025-05-04T17:57:19+08:00"}
+{"level":"info","msg":"成功处理仓库: HACKEDbySUSHI/Local_Deep_Seek","time":"2025-05-04T17:57:19+08:00"}
+{"level":"info","msg":"爬取完成","time":"2025-05-04T17:57:19+08:00"}
+{"level":"info","msg":"启动 AI 分析服务...","time":"2025-05-04T17:58:35+08:00"}
+{"level":"info","msg":"开始爬取 GitHub 仓库...","time":"2025-05-04T17:58:35+08:00"}
+{"level":"info","msg":"找到 1 个仓库","time":"2025-05-04T17:58:36+08:00"}
+{"level":"info","msg":"正在处理第 1/1 个仓库: adam104504/J.A.R.V.I.S.2.0","time":"2025-05-04T17:58:36+08:00"}
+{"level":"info","msg":"创建新仓库: adam104504/J.A.R.V.I.S.2.0 (URL: https://github.com/adam104504/J.A.R.V.I.S.2.0)","time":"2025-05-04T17:58:37+08:00"}
+{"level":"info","msg":"成功处理仓库: adam104504/J.A.R.V.I.S.2.0","time":"2025-05-04T17:58:37+08:00"}
+{"level":"info","msg":"爬取完成","time":"2025-05-04T17:58:37+08:00"}
+{"level":"info","msg":"启动 AI 分析服务...","time":"2025-05-04T17:59:00+08:00"}
+{"level":"info","msg":"开始爬取 GitHub 仓库...","time":"2025-05-04T17:59:00+08:00"}
+{"level":"info","msg":"找到 1 个仓库","time":"2025-05-04T17:59:01+08:00"}
+{"level":"info","msg":"正在处理第 1/1 个仓库: Tivoraapt/Leap-Ai-Make-Your-Ai-Api-Chat-Music-Coding","time":"2025-05-04T17:59:01+08:00"}
+{"level":"info","msg":"创建新仓库: Tivoraapt/Leap-Ai-Make-Your-Ai-Api-Chat-Music-Coding (URL: https://github.com/Tivoraapt/Leap-Ai-Make-Your-Ai-Api-Chat-Music-Coding)","time":"2025-05-04T17:59:02+08:00"}
+{"level":"info","msg":"成功处理仓库: Tivoraapt/Leap-Ai-Make-Your-Ai-Api-Chat-Music-Coding","time":"2025-05-04T17:59:02+08:00"}
+{"level":"info","msg":"爬取完成","time":"2025-05-04T17:59:02+08:00"}
+{"level":"info","msg":"找到 10 个未分析的仓库","time":"2025-05-04T17:59:06+08:00"}
+{"level":"info","msg":"正在分析仓库: exvinityf/BSternAIChain","time":"2025-05-04T17:59:15+08:00"}
+{"level":"info","msg":"成功分析仓库: exvinityf/BSternAIChain","time":"2025-05-04T17:59:41+08:00"}
+{"level":"info","msg":"正在分析仓库: SecureAgentTools/AgentVault","time":"2025-05-04T17:59:43+08:00"}
+{"level":"info","msg":"成功分析仓库: SecureAgentTools/AgentVault","time":"2025-05-04T18:00:07+08:00"}
+{"level":"info","msg":"正在分析仓库: ahlem56/speedyGoBackend","time":"2025-05-04T18:00:09+08:00"}
+{"level":"info","msg":"启动 AI 分析服务...","time":"2025-05-04T18:06:06+08:00"}
+{"level":"info","msg":"开始爬取 GitHub 仓库...","time":"2025-05-04T18:06:06+08:00"}
+{"level":"info","msg":"找到 1 个仓库","time":"2025-05-04T18:06:07+08:00"}
+{"level":"info","msg":"正在处理第 1/1 个仓库: asdsadsddas123/freev2raynode","time":"2025-05-04T18:06:07+08:00"}
+{"level":"info","msg":"更新仓库: asdsadsddas123/freev2raynode (URL: https://github.com/asdsadsddas123/freev2raynode)","time":"2025-05-04T18:06:08+08:00"}
+{"level":"info","msg":"成功处理仓库: asdsadsddas123/freev2raynode","time":"2025-05-04T18:06:08+08:00"}
+{"level":"info","msg":"爬取完成","time":"2025-05-04T18:06:08+08:00"}
+{"level":"info","msg":"找到 10 个未分析的仓库","time":"2025-05-04T18:06:08+08:00"}
+{"level":"info","msg":"正在分析仓库: HACKEDbySUSHI/Local_Deep_Seek","time":"2025-05-04T18:06:08+08:00"}
+{"level":"info","msg":"成功分析仓库: HACKEDbySUSHI/Local_Deep_Seek","time":"2025-05-04T18:06:25+08:00"}
+{"level":"info","msg":"正在分析仓库: exvinityf/BSternAIChain","time":"2025-05-04T18:06:27+08:00"}
+{"level":"info","msg":"成功分析仓库: exvinityf/BSternAIChain","time":"2025-05-04T18:06:44+08:00"}
+{"level":"info","msg":"正在分析仓库: SecureAgentTools/AgentVault","time":"2025-05-04T18:06:46+08:00"}
+{"level":"info","msg":"成功分析仓库: SecureAgentTools/AgentVault","time":"2025-05-04T18:07:07+08:00"}
+{"level":"info","msg":"正在分析仓库: ahlem56/speedyGoBackend","time":"2025-05-04T18:07:09+08:00"}
+{"level":"info","msg":"成功分析仓库: ahlem56/speedyGoBackend","time":"2025-05-04T18:07:29+08:00"}
+{"level":"info","msg":"正在分析仓库: adam104504/J.A.R.V.I.S.2.0","time":"2025-05-04T18:07:31+08:00"}
+{"level":"info","msg":"成功分析仓库: adam104504/J.A.R.V.I.S.2.0","time":"2025-05-04T18:07:49+08:00"}
+{"level":"info","msg":"正在分析仓库: josuke311/GPT4Scene","time":"2025-05-04T18:07:51+08:00"}
+{"level":"info","msg":"成功分析仓库: josuke311/GPT4Scene","time":"2025-05-04T18:08:10+08:00"}
+{"level":"info","msg":"正在分析仓库: Tivoraapt/Leap-Ai-Make-Your-Ai-Api-Chat-Music-Coding","time":"2025-05-04T18:08:12+08:00"}
+{"level":"info","msg":"成功分析仓库: Tivoraapt/Leap-Ai-Make-Your-Ai-Api-Chat-Music-Coding","time":"2025-05-04T18:08:32+08:00"}
+{"level":"info","msg":"正在分析仓库: alexrzem/rzem-guru","time":"2025-05-04T18:08:34+08:00"}
+{"level":"info","msg":"成功分析仓库: alexrzem/rzem-guru","time":"2025-05-04T18:08:49+08:00"}
+{"level":"info","msg":"正在分析仓库: cavhd2/Synthron-CFD-Trader-PRO","time":"2025-05-04T18:08:51+08:00"}
+{"level":"info","msg":"成功分析仓库: cavhd2/Synthron-CFD-Trader-PRO","time":"2025-05-04T18:09:12+08:00"}
+{"level":"info","msg":"正在分析仓库: LYSHARMA/Replicate-with-Ai-assistant-using-Meta-Llama-3-8B-Instruct","time":"2025-05-04T18:09:14+08:00"}
+{"level":"info","msg":"成功分析仓库: LYSHARMA/Replicate-with-Ai-assistant-using-Meta-Llama-3-8B-Instruct","time":"2025-05-04T18:09:35+08:00"}
+{"level":"info","msg":"找到 10 个未分析的仓库","time":"2025-05-04T18:09:37+08:00"}
+{"level":"info","msg":"正在分析仓库: Astika08/VAJIRA-MD","time":"2025-05-04T18:09:37+08:00"}
+{"level":"info","msg":"启动 AI 分析服务...","time":"2025-05-04T18:09:53+08:00"}
+{"level":"info","msg":"开始爬取 GitHub 仓库...","time":"2025-05-04T18:09:53+08:00"}
+{"level":"info","msg":"找到 1 个仓库","time":"2025-05-04T18:09:54+08:00"}
+{"level":"info","msg":"正在处理第 1/1 个仓库: Sayar-21223/queens-schedule-verification","time":"2025-05-04T18:09:54+08:00"}
+{"level":"info","msg":"创建新仓库: Sayar-21223/queens-schedule-verification (URL: https://github.com/Sayar-21223/queens-schedule-verification)","time":"2025-05-04T18:09:54+08:00"}
+{"level":"info","msg":"成功处理仓库: Sayar-21223/queens-schedule-verification","time":"2025-05-04T18:09:54+08:00"}
+{"level":"info","msg":"爬取完成","time":"2025-05-04T18:09:54+08:00"}
+{"level":"info","msg":"找到 10 个未分析的仓库","time":"2025-05-04T18:09:55+08:00"}
+{"level":"info","msg":"正在分析仓库: Astika08/VAJIRA-MD","time":"2025-05-04T18:09:55+08:00"}
+{"level":"info","msg":"成功分析仓库: Astika08/VAJIRA-MD","time":"2025-05-04T18:10:12+08:00"}
+{"level":"info","msg":"正在分析仓库: rohitg00/awesome-devops-mcp-servers","time":"2025-05-04T18:10:14+08:00"}
+{"level":"info","msg":"成功分析仓库: rohitg00/awesome-devops-mcp-servers","time":"2025-05-04T18:10:35+08:00"}
+{"level":"info","msg":"正在分析仓库: ReaperSans2022/trustless-ai-output-verification","time":"2025-05-04T18:10:37+08:00"}
+{"level":"info","msg":"成功分析仓库: ReaperSans2022/trustless-ai-output-verification","time":"2025-05-04T18:10:59+08:00"}
+{"level":"info","msg":"正在分析仓库: hungishere/RecipeGenerator","time":"2025-05-04T18:11:01+08:00"}
