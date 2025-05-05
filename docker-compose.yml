@@ -9,29 +9,36 @@ services:
       - "8080:8080"
     environment:
       - GITHUB_TOKEN=${GITHUB_TOKEN}
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_USER=repoinsight_user
-      - DB_PASSWORD=K8p9m2n5x7Qw3
-      - DB_NAME=repoinsight_db
     volumes:
       - ./logs:/app/logs
+      - ./config.yml:/app/config.yml
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     restart: unless-stopped
+    networks:
+      - repoinsight-network
 
   db:
     image: postgres:16-alpine
     ports:
       - "5432:5432"
     environment:
-      - POSTGRES_USER=repoinsight_user
-      - POSTGRES_PASSWORD=K8p9m2n5x7Qw3
-      - POSTGRES_DB=repoinsight_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=repoinsight
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
     restart: unless-stopped
+    networks:
+      - repoinsight-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d repoinsight"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    command: postgres -c 'max_connections=1000'
 
 volumes:
   postgres_data:

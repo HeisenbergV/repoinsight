@@ -1,9 +1,3 @@
--- 创建数据库（如果不存在）
-CREATE DATABASE repoinsight_db;
-
--- 连接到数据库
-\c repoinsight_db;
-
 -- 创建扩展
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
@@ -45,6 +39,20 @@ CREATE INDEX IF NOT EXISTS idx_repositories_stars ON repositories(stars DESC);
 CREATE INDEX IF NOT EXISTS idx_repositories_language ON repositories(language);
 CREATE INDEX IF NOT EXISTS idx_repositories_last_pushed_at ON repositories(last_pushed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_repositories_deleted_at ON repositories(deleted_at);
+
+-- 创建每日推送进度表
+CREATE TABLE IF NOT EXISTS daily_push_progress (
+    id SERIAL PRIMARY KEY,
+    topic VARCHAR(50) NOT NULL,
+    date DATE NOT NULL,
+    last_repo_id INTEGER NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(topic, date)
+);
+
+-- 创建索引
+CREATE INDEX idx_daily_push_progress_topic_date ON daily_push_progress(topic, date);
 
 -- 创建更新时间触发器
 CREATE OR REPLACE FUNCTION update_updated_at_column()

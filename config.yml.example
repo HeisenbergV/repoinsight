@@ -1,5 +1,5 @@
 database:
-  host: localhost
+  host: db
   port: 5432
   user: postgres
   password: postgres
@@ -12,6 +12,11 @@ api:
     api_key: your_deepseek_api_key
     base_url: https://api.deepseek.com/v1/chat/completions
     interval: 5  # 分析间隔（分钟）
+  wechat:
+    app_id: your_wechat_app_id
+    app_secret: your_wechat_app_secret
+    template_id: your_template_id  # 消息模板ID
+    push_interval: 24  # 推送间隔（小时）
 
 app:
   search_keyword: "language:go stars:>100"

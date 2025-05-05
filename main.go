@@ -36,6 +36,12 @@ type Config struct {
 			BaseURL  string `yaml:"base_url"`
 			Interval int    `yaml:"interval"`
 		} `yaml:"deepseek"`
+		Wechat struct {
+			AppID        string `yaml:"app_id"`
+			AppSecret    string `yaml:"app_secret"`
+			TemplateID   string `yaml:"template_id"`
+			PushInterval int    `yaml:"push_interval"`
+		} `yaml:"wechat"`
 	} `yaml:"api"`
 	App struct {
 		SearchKeyword   string `yaml:"search_keyword"`
@@ -125,15 +131,27 @@ func main() {
 	}
 
 	fmt.Printf("正在连接数据库...\n")
-	// 连接数据库
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable",
-		config.Database.Host,
-		config.Database.User,
-		config.Database.Password,
-		config.Database.Name,
-		config.Database.Port,
-	)
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	// 连接数据库，添加重试机制
+	var db *gorm.DB
+	maxRetries := 10
+	retryInterval := 5 * time.Second
+
+	for i := 0; i < maxRetries; i++ {
+		dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable",
+			config.Database.Host,
+			config.Database.User,
+			config.Database.Password,
+			config.Database.Name,
+			config.Database.Port,
+		)
+		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+		if err == nil {
+			break
+		}
+		fmt.Printf("数据库连接失败，正在重试 (%d/%d): %v\n", i+1, maxRetries, err)
+		time.Sleep(retryInterval)
+	}
+
 	if err != nil {
 		fmt.Printf("连接数据库失败: %v\n", err)
 		os.Exit(1)
@@ -182,10 +200,9 @@ func main() {
 
 	// 设置路由
 	router := api.SetupRouter(handler)
-
 	// 创建等待组
 	var wg sync.WaitGroup
-	wg.Add(3) // 增加到 3，因为现在有三个服务
+	wg.Add(4) // 增加到 4，因为现在有四个服务
 
 	// 创建退出通道
 	quit := make(chan os.Signal, 1)

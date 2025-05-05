@@ -14,7 +14,7 @@ RUN go mod download
 COPY . .
 
 # 编译应用
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/repoinsight ./cmd/api/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/repoinsight .
 
 # 最终镜像
 FROM alpine:latest
@@ -39,6 +39,8 @@ WORKDIR /app
 
 # 从构建阶段复制二进制文件
 COPY --from=builder /app/repoinsight .
+# 复制配置文件
+COPY --from=builder /app/config.yml /app/config.yml
 
 # 暴露端口
 EXPOSE 8080

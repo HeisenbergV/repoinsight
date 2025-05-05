@@ -69,7 +69,7 @@ cp config.yml.example config.yml
 3. 初始化数据库：
 ```bash
 docker-compose up -d db
-docker exec -i repoinsight-db psql -U repoinsight_user -d repoinsight_db < schema.sql
+docker exec -i repoinsight-db psql -U postgres -d repoinsight < schema.sql
 ```
 
 4. 启动应用服务：
@@ -96,7 +96,7 @@ cp config.yml.example config.yml
 
 3. 初始化数据库：
 ```bash
-psql -U repoinsight_user -d repoinsight_db < schema.sql
+psql -U postgres -d repoinsight < schema.sql
 ```
 
 4. 运行项目：
@@ -112,9 +112,9 @@ go run main.go
 database:
   host: db
   port: 5432
-  user: repoinsight_user
-  password: your_password
-  name: repoinsight_db
+  user: postgres
+  password: postgres
+  name: repoinsight
 
 api:
   github:
@@ -145,6 +145,6 @@ app:
    - 合理设置数据库连接池
    - 定期清理过期数据
 
-## 📝 许可证
+## �� 许可证
 
 MIT License
