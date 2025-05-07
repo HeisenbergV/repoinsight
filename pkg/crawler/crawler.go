@@ -3,10 +3,12 @@ package crawler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"time"
 
-	"github.com/HeisenbergV/repoinsight/api"
 	"github.com/HeisenbergV/repoinsight/pkg/logger"
+	"github.com/HeisenbergV/repoinsight/pkg/models"
 	"github.com/google/go-github/v56/github"
 	"golang.org/x/oauth2"
 	"gorm.io/gorm"
@@ -59,6 +61,18 @@ func NewCrawler(db *gorm.DB, config *Config) *Crawler {
 func (c *Crawler) Start() error {
 	logger.Info("开始爬取 GitHub 仓库...")
 
+	// 创建爬取历史记录
+	crawlHistory := &models.CrawlHistory{
+		Keyword:        c.config.SearchKeyword,
+		StartedAt:      time.Now(),
+		Status:         "running",
+		TotalRepos:     0,
+		ProcessedRepos: 0,
+	}
+	if err := c.db.Create(crawlHistory).Error; err != nil {
+		return fmt.Errorf("创建爬取历史记录失败: %v", err)
+	}
+
 	// 搜索仓库
 	opts := &github.SearchOptions{
 		Sort:  "updated",
@@ -71,123 +85,147 @@ func (c *Crawler) Start() error {
 	// 执行搜索
 	result, _, err := c.client.SearchRepositories(context.Background(), c.config.SearchKeyword, opts)
 	if err != nil {
+		crawlHistory.Status = "failed"
+		crawlHistory.ErrorMessage = err.Error()
+		c.db.Save(crawlHistory)
 		return fmt.Errorf("搜索仓库失败: %v", err)
 	}
 
-	logger.Infof("找到 %d 个仓库", len(result.Repositories))
+	totalRepos := len(result.Repositories)
+	logger.Infof("找到 %d 个仓库", totalRepos)
+
+	// 更新爬取历史记录
+	crawlHistory.TotalRepos = totalRepos
+	c.db.Save(crawlHistory)
 
 	// 处理每个仓库
 	for i, repo := range result.Repositories {
-		logger.Infof("正在处理第 %d/%d 个仓库: %s", i+1, len(result.Repositories), repo.GetFullName())
-		if err := c.processRepository(repo); err != nil {
+		logger.Infof("正在处理第 %d/%d 个仓库: %s", i+1, totalRepos, repo.GetFullName())
+		if err := c.processRepository(repo, i+1, crawlHistory); err != nil {
 			logger.Errorf("处理仓库 %s 失败: %v", repo.GetFullName(), err)
 			continue
 		}
 		logger.Infof("成功处理仓库: %s", repo.GetFullName())
 	}
 
+	// 更新爬取历史记录状态
+	crawlHistory.Status = "completed"
+	crawlHistory.CompletedAt = time.Now()
+	c.db.Save(crawlHistory)
+
 	logger.Info("爬取完成")
 	return nil
 }
 
-func (c *Crawler) processRepository(repo *github.Repository) error {
-	// 获取 README
-	readme, err := c.getReadme(repo.GetOwner().GetLogin(), repo.GetName())
-	if err != nil {
-		logger.Warnf("获取仓库 %s 的 README 失败: %v", repo.GetFullName(), err)
+func (c *Crawler) processRepository(repo *github.Repository, rank int, crawlHistory *models.CrawlHistory) error {
+	maxRetries := 3
+	retryInterval := time.Second
+
+	for i := 0; i < maxRetries; i++ {
+		var existingRepo models.Repository
+		result := c.db.Where("url = ?", repo.GetHTMLURL()).First(&existingRepo)
+		if result.Error != nil {
+			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+				// 转换标签为 JSON
+				topics, _ := json.Marshal(repo.Topics)
+
+				// 创建新记录
+				newRepo := models.Repository{
+					FullName:       repo.GetFullName(),
+					Name:           repo.GetName(),
+					Owner:          repo.GetOwner().GetLogin(),
+					Description:    repo.GetDescription(),
+					URL:            repo.GetHTMLURL(),
+					Stars:          repo.GetStargazersCount(),
+					Forks:          repo.GetForksCount(),
+					Language:       repo.GetLanguage(),
+					Topics:         string(topics),
+					Readme:         "",
+					LastPushedAt:   repo.GetPushedAt().Time,
+					IsArchived:     repo.GetArchived(),
+					License:        "",
+					DefaultBranch:  repo.GetDefaultBranch(),
+					OpenIssues:     repo.GetOpenIssuesCount(),
+					Watchers:       repo.GetWatchersCount(),
+					Size:           repo.GetSize(),
+					HasIssues:      repo.GetHasIssues(),
+					HasProjects:    repo.GetHasProjects(),
+					HasWiki:        repo.GetHasWiki(),
+					HasPages:       repo.GetHasPages(),
+					HasDownloads:   repo.GetHasDownloads(),
+					IsTemplate:     repo.GetIsTemplate(),
+					SearchKeyword:  c.config.SearchKeyword,
+					SearchRank:     rank,
+					LastCrawledAt:  time.Now(),
+					AnalysisStatus: "pending",
+				}
+
+				if err := c.db.Create(&newRepo).Error; err != nil {
+					if i < maxRetries-1 {
+						logger.Warnf("创建仓库记录失败，正在重试 (%d/%d): %v", i+1, maxRetries, err)
+						time.Sleep(retryInterval)
+						continue
+					}
+					return fmt.Errorf("创建仓库记录失败: %v", err)
+				}
+			} else {
+				if i < maxRetries-1 {
+					logger.Warnf("查询仓库记录失败，正在重试 (%d/%d): %v", i+1, maxRetries, result.Error)
+					time.Sleep(retryInterval)
+					continue
+				}
+				return fmt.Errorf("查询仓库记录失败: %v", result.Error)
+			}
+		} else {
+			// 转换标签为 JSON
+			topics, _ := json.Marshal(repo.Topics)
+
+			// 更新现有记录
+			updates := map[string]interface{}{
+				"name":            repo.GetName(),
+				"owner":           repo.GetOwner().GetLogin(),
+				"description":     repo.GetDescription(),
+				"stars":           repo.GetStargazersCount(),
+				"forks":           repo.GetForksCount(),
+				"language":        repo.GetLanguage(),
+				"topics":          string(topics),
+				"readme":          "",
+				"last_pushed_at":  repo.GetPushedAt().Time,
+				"is_archived":     repo.GetArchived(),
+				"license":         "",
+				"default_branch":  repo.GetDefaultBranch(),
+				"open_issues":     repo.GetOpenIssuesCount(),
+				"watchers":        repo.GetWatchersCount(),
+				"size":            repo.GetSize(),
+				"has_issues":      repo.GetHasIssues(),
+				"has_projects":    repo.GetHasProjects(),
+				"has_wiki":        repo.GetHasWiki(),
+				"has_pages":       repo.GetHasPages(),
+				"has_downloads":   repo.GetHasDownloads(),
+				"is_template":     repo.GetIsTemplate(),
+				"search_keyword":  c.config.SearchKeyword,
+				"search_rank":     rank,
+				"last_crawled_at": time.Now(),
+				"analysis_status": "pending",
+			}
+
+			if err := c.db.Model(&existingRepo).Updates(updates).Error; err != nil {
+				if i < maxRetries-1 {
+					logger.Warnf("更新仓库记录失败，正在重试 (%d/%d): %v", i+1, maxRetries, err)
+					time.Sleep(retryInterval)
+					continue
+				}
+				return fmt.Errorf("更新仓库记录失败: %v", err)
+			}
+		}
+
+		// 更新爬取历史记录的处理进度
+		crawlHistory.ProcessedRepos++
+		if err := c.db.Save(crawlHistory).Error; err != nil {
+			logger.Warnf("更新爬取历史记录失败: %v", err)
+		}
+
+		return nil
 	}
-
-	// 获取 AI 分析
-	aiAnalysis, err := c.analyzeRepository(repo, readme)
-	if err != nil {
-		logger.Warnf("分析仓库 %s 失败: %v", repo.GetFullName(), err)
-	}
-
-	// 转换标签为 JSON
-	topics, _ := json.Marshal(repo.Topics)
-
-	// 获取 License 名称
-	var licenseName string
-	if license := repo.GetLicense(); license != nil {
-		licenseName = license.GetName()
-	}
-
-	// 创建或更新仓库记录
-	repository := &api.Repository{
-		FullName:      repo.GetFullName(),
-		Name:          repo.GetName(),
-		Owner:         repo.GetOwner().GetLogin(),
-		Description:   repo.GetDescription(),
-		URL:           repo.GetHTMLURL(),
-		Stars:         repo.GetStargazersCount(),
-		Forks:         repo.GetForksCount(),
-		Language:      repo.GetLanguage(),
-		Topics:        string(topics),
-		Readme:        readme,
-		AIAnalysis:    aiAnalysis,
-		LastPushedAt:  repo.GetPushedAt().Time,
-		CreatedAt:     repo.GetCreatedAt().Time,
-		UpdatedAt:     repo.GetUpdatedAt().Time,
-		IsArchived:    repo.GetArchived(),
-		License:       licenseName,
-		DefaultBranch: repo.GetDefaultBranch(),
-		OpenIssues:    repo.GetOpenIssuesCount(),
-		Watchers:      repo.GetWatchersCount(),
-		Size:          repo.GetSize(),
-		HasIssues:     repo.GetHasIssues(),
-		HasProjects:   repo.GetHasProjects(),
-		HasWiki:       repo.GetHasWiki(),
-		HasPages:      repo.GetHasPages(),
-		HasDownloads:  repo.GetHasDownloads(),
-		IsTemplate:    repo.GetIsTemplate(),
-	}
-
-	// 检查数据库中是否已存在相同 URL 的记录
-	var existingRepo api.Repository
-	result := c.db.Where("url = ?", repository.URL).First(&existingRepo)
-
-	if result.Error == nil {
-		// 记录已存在，更新数据
-		logger.Infof("更新仓库: %s (URL: %s)", repository.FullName, repository.URL)
-		return c.db.Model(&existingRepo).Updates(repository).Error
-	} else if result.Error == gorm.ErrRecordNotFound {
-		// 记录不存在，创建新记录
-		logger.Infof("创建新仓库: %s (URL: %s)", repository.FullName, repository.URL)
-		return c.db.Create(repository).Error
-	} else {
-		// 其他错误
-		return result.Error
-	}
-}
-
-func (c *Crawler) getReadme(owner, repo string) (string, error) {
-	readme, _, err := c.client.RepositoriesGetReadme(context.Background(), owner, repo, &github.RepositoryContentGetOptions{})
-	if err != nil {
-		return "", err
-	}
-
-	content, err := readme.GetContent()
-	if err != nil {
-		return "", err
-	}
-
-	return content, nil
-}
-
-func (c *Crawler) analyzeRepository(repo *github.Repository, readme string) (string, error) {
-	// TODO: 实现 AI 分析逻辑
-	// 这里需要调用 AI 服务来分析仓库
-	// 暂时返回一个简单的分析结果
-	return fmt.Sprintf("这是一个 %s 项目，主要使用 %s 语言开发。\n\n项目描述：%s\n\nREADME 内容：%s",
-		repo.GetName(),
-		repo.GetLanguage(),
-		repo.GetDescription(),
-		readme[:min(500, len(readme))]), nil
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
+	return fmt.Errorf("处理仓库失败，已达到最大重试次数")
 }

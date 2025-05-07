@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/schema"
 )
 
 type Config struct {
@@ -64,7 +66,7 @@ type Config struct {
 	} `yaml:"log"`
 }
 
-func loadConfig() (*Config, error) {
+func initConfig() (*Config, error) {
 	data, err := os.ReadFile("config.yml")
 	if err != nil {
 		return nil, fmt.Errorf("读取配置文件失败: %v", err)
@@ -75,36 +77,97 @@ func loadConfig() (*Config, error) {
 		return nil, fmt.Errorf("解析配置文件失败: %v", err)
 	}
 
-	// 从环境变量读取 GitHub Token
-	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
-		config.API.Github.Token = token
-	}
-
-	// 从环境变量读取 Deepseek API Key
-	if apiKey := os.Getenv("DEEPSEEK_API_KEY"); apiKey != "" {
-		config.API.Deepseek.APIKey = apiKey
-	}
-
 	if config.API.Github.Token == "" {
-		return nil, fmt.Errorf("GitHub Token 未设置，请设置 GITHUB_TOKEN 环境变量或在配置文件中设置")
+		return nil, fmt.Errorf("github token 未设置，请设置 GITHUB_TOKEN 环境变量或在配置文件中设置")
 	}
 
 	if config.API.Deepseek.APIKey == "" {
-		return nil, fmt.Errorf("Deepseek API Key 未设置，请设置 DEEPSEEK_API_KEY 环境变量或在配置文件中设置")
+		return nil, fmt.Errorf("deepseek API key 未设置，请设置 DEEPSEEK_API_KEY 环境变量或在配置文件中设置")
 	}
 
 	return &config, nil
 }
 
-func main() {
-	// 加载配置
-	config, err := loadConfig()
-	if err != nil {
-		fmt.Printf("加载配置失败: %v\n", err)
-		os.Exit(1)
+func initDB(config *Config) (*gorm.DB, error) {
+	var baseDB *gorm.DB
+
+	maxRetries := 10
+	retryInterval := 5 * time.Second
+
+	for i := 0; i < maxRetries; i++ {
+		dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable",
+			config.Database.Host,
+			config.Database.User,
+			config.Database.Password,
+			config.Database.Name,
+			config.Database.Port,
+		)
+		db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+			NamingStrategy: schema.NamingStrategy{
+				SingularTable: true, // 使用单数表名
+			},
+			PrepareStmt: true, // 启用预处理语句缓存
+		})
+		if err == nil {
+			baseDB = db
+			break
+		}
+		fmt.Printf("数据库连接失败，正在重试 (%d/%d): %v\n", i+1, maxRetries, err)
+		time.Sleep(retryInterval)
 	}
 
-	// 初始化日志
+	if baseDB == nil {
+		return nil, fmt.Errorf("连接数据库失败")
+	}
+
+	// 配置连接池
+	sqlDB, err := baseDB.DB()
+	if err != nil {
+		return nil, fmt.Errorf("获取数据库连接失败: %v", err)
+	}
+
+	sqlDB.SetMaxIdleConns(20)
+	sqlDB.SetMaxOpenConns(200)
+	sqlDB.SetConnMaxLifetime(24 * time.Hour)
+	sqlDB.SetConnMaxIdleTime(12 * time.Hour)
+
+	// 读取 schema.sql
+	schemaSQL, err := os.ReadFile("schema.sql")
+	if err != nil {
+		return nil, fmt.Errorf("读取 schema.sql 失败: %v", err)
+	}
+
+	// 单独提取 CREATE FUNCTION 语句
+	createFuncStart := strings.Index(string(schemaSQL), "CREATE OR REPLACE FUNCTION")
+	createFuncEnd := strings.Index(string(schemaSQL), "$$ language 'plpgsql';")
+	if createFuncStart != -1 && createFuncEnd != -1 {
+		createFuncEnd += len("$$ language 'plpgsql';")
+		createFunc := string(schemaSQL)[createFuncStart:createFuncEnd]
+		if err := baseDB.Exec(createFunc).Error; err != nil {
+			return nil, fmt.Errorf("执行函数创建失败: %v", err)
+		}
+		// 去掉 function 语句部分
+		schemaSQL = append(schemaSQL[:createFuncStart], schemaSQL[createFuncEnd:]...)
+	}
+
+	// 其余 SQL 语句分号分割后逐条执行
+	stmts := strings.Split(string(schemaSQL), ";")
+	for _, stmt := range stmts {
+		stmt = strings.TrimSpace(stmt)
+		if stmt == "" {
+			continue
+		}
+		if err := baseDB.Exec(stmt).Error; err != nil {
+			return nil, fmt.Errorf("执行数据库迁移失败: %v\nSQL: %s", err, stmt)
+		}
+	}
+
+	fmt.Println("数据库迁移完成")
+
+	return baseDB, nil
+}
+
+func initLog(config *Config) error {
 	logConfig := logger.Config{
 		Level:  config.Log.Level,
 		Format: config.Log.Format,
@@ -126,45 +189,28 @@ func main() {
 		},
 	}
 	if err := logger.Init(logConfig); err != nil {
+		return fmt.Errorf("初始化日志失败: %v", err)
+	}
+	return nil
+}
+
+func main() {
+	config, err := initConfig()
+	if err != nil {
+		fmt.Printf("加载配置失败: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := initLog(config); err != nil {
 		fmt.Printf("初始化日志失败: %v\n", err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("正在连接数据库...\n")
-	// 连接数据库，添加重试机制
-	var db *gorm.DB
-	maxRetries := 10
-	retryInterval := 5 * time.Second
-
-	for i := 0; i < maxRetries; i++ {
-		dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable",
-			config.Database.Host,
-			config.Database.User,
-			config.Database.Password,
-			config.Database.Name,
-			config.Database.Port,
-		)
-		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
-		if err == nil {
-			break
-		}
-		fmt.Printf("数据库连接失败，正在重试 (%d/%d): %v\n", i+1, maxRetries, err)
-		time.Sleep(retryInterval)
-	}
-
+	db, err := initDB(config)
 	if err != nil {
 		fmt.Printf("连接数据库失败: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Printf("数据库连接成功\n")
-
-	// 自动迁移数据库表
-	fmt.Printf("正在迁移数据库表...\n")
-	if err := db.AutoMigrate(&api.Repository{}); err != nil {
-		fmt.Printf("迁移数据库失败: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("数据库表迁移完成\n")
 
 	// 创建爬虫配置
 	crawlerConfig := &crawler.Config{
@@ -181,30 +227,15 @@ func main() {
 		Interval:   time.Duration(config.API.Deepseek.Interval) * time.Minute,
 	}
 
-	// 创建爬虫实例
-	c := crawler.NewCrawler(db, crawlerConfig)
-
-	// 创建 AI 分析器实例
-	a := ai.NewAnalyzer(db, analyzerConfig)
-
-	// 启动 AI 分析器
-	go func() {
-		fmt.Printf("启动 AI 分析服务...\n")
-		if err := a.Start(); err != nil {
-			fmt.Printf("启动 AI 分析器失败: %v\n", err)
-		}
-	}()
-
-	// 创建 API 处理器
+	crawler := crawler.NewCrawler(db, crawlerConfig)
+	aiAnalyzer := ai.NewAnalyzer(db, analyzerConfig)
 	handler := api.NewHandler(db)
 
-	// 设置路由
 	router := api.SetupRouter(handler)
-	// 创建等待组
-	var wg sync.WaitGroup
-	wg.Add(4) // 增加到 4，因为现在有四个服务
 
-	// 创建退出通道
+	var wg sync.WaitGroup
+	wg.Add(3)
+
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
@@ -233,7 +264,7 @@ func main() {
 		fmt.Printf("启动爬虫服务...\n")
 
 		// 立即执行一次
-		if err := c.Start(); err != nil {
+		if err := crawler.Start(); err != nil {
 			fmt.Printf("爬取失败: %v\n", err)
 		}
 
@@ -241,14 +272,26 @@ func main() {
 			select {
 			case <-crawlerTicker.C:
 				fmt.Printf("开始新一轮爬取...\n")
-				if err := c.Start(); err != nil {
+				if err := crawler.Start(); err != nil {
 					fmt.Printf("爬取失败: %v\n", err)
 				}
 			case <-quit:
+
 				fmt.Printf("爬虫服务正在关闭...\n")
 				return
 			}
 		}
+	}()
+
+	// 启动 AI 分析器
+	go func() {
+		defer wg.Done()
+		fmt.Printf("启动 AI 分析服务...\n")
+		if err := aiAnalyzer.Start(); err != nil {
+			fmt.Printf("启动 AI 分析器失败: %v\n", err)
+		}
+		<-quit
+		fmt.Printf("AI 分析服务正在关闭...\n")
 	}()
 
 	// 等待退出信号
@@ -262,6 +305,16 @@ func main() {
 	// 优雅地关闭 HTTP 服务器
 	if err := srv.Shutdown(ctx); err != nil {
 		fmt.Printf("服务器关闭出错: %v\n", err)
+	}
+
+	// 关闭数据库连接
+	sqlDB, err := db.DB()
+	if err != nil {
+		fmt.Printf("获取数据库连接失败: %v\n", err)
+	} else {
+		if err := sqlDB.Close(); err != nil {
+			fmt.Printf("关闭数据库连接失败: %v\n", err)
+		}
 	}
 
 	// 等待所有服务完成

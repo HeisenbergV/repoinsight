@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/HeisenbergV/repoinsight/pkg/models"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -29,10 +30,10 @@ func (h *Handler) GetRepositories(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
 
-	var repositories []Repository
+	var repositories []models.Repository
 	var total int64
 
-	h.db.Model(&Repository{}).Count(&total)
+	h.db.Model(&models.Repository{}).Count(&total)
 	h.db.Offset((page - 1) * pageSize).Limit(pageSize).Find(&repositories)
 
 	c.JSON(http.StatusOK, gin.H{
@@ -56,7 +57,7 @@ func (h *Handler) GetRepositories(c *gin.Context) {
 func (h *Handler) GetRepository(c *gin.Context) {
 	id := c.Param("id")
 
-	var repository Repository
+	var repository models.Repository
 	if err := h.db.First(&repository, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Repository not found"})
 		return
@@ -94,7 +95,7 @@ func (h *Handler) SearchRepositories(c *gin.Context) {
 	}
 
 	// 构建查询条件
-	query := h.db.Model(&Repository{})
+	query := h.db.Model(&models.Repository{})
 	if keyword != "" {
 		query = query.Where("full_name LIKE ? OR description LIKE ?",
 			"%"+keyword+"%", "%"+keyword+"%")
@@ -108,7 +109,7 @@ func (h *Handler) SearchRepositories(c *gin.Context) {
 	}
 
 	// 查询数据
-	var repositories []Repository
+	var repositories []models.Repository
 	if err := query.
 		Select("full_name, created_at, updated_at, ai_analysis, url").
 		Order("updated_at DESC").
@@ -137,9 +138,9 @@ func (h *Handler) SearchRepositories(c *gin.Context) {
 // @Router /api/v1/system/status [get]
 func (h *Handler) GetStatus(c *gin.Context) {
 	var totalRepos int64
-	var lastUpdated Repository
+	var lastUpdated models.Repository
 
-	h.db.Model(&Repository{}).Count(&totalRepos)
+	h.db.Model(&models.Repository{}).Count(&totalRepos)
 	h.db.Order("updated_at desc").First(&lastUpdated)
 
 	c.JSON(http.StatusOK, gin.H{

@@ -2,16 +2,14 @@ package ai
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
 
-	"github.com/HeisenbergV/repoinsight/api"
 	"github.com/HeisenbergV/repoinsight/pkg/logger"
-	"github.com/gin-gonic/gin"
+	"github.com/HeisenbergV/repoinsight/pkg/models"
 	"gorm.io/gorm"
 )
 
@@ -25,6 +23,7 @@ type Config struct {
 	APIBaseURL string
 	BatchSize  int
 	Interval   time.Duration
+	MaxRetries int
 }
 
 type DeepseekRequest struct {
@@ -55,6 +54,9 @@ func NewAnalyzer(db *gorm.DB, config *Config) *Analyzer {
 	if config.Interval == 0 {
 		config.Interval = 5 * time.Minute
 	}
+	if config.MaxRetries == 0 {
+		config.MaxRetries = 3
+	}
 	return &Analyzer{
 		db:     db,
 		config: config,
@@ -63,24 +65,23 @@ func NewAnalyzer(db *gorm.DB, config *Config) *Analyzer {
 
 func (a *Analyzer) Start() error {
 	logger.Info("启动 AI 分析服务...")
-	ticker := time.NewTicker(time.Second * 2)
+	ticker := time.NewTicker(a.config.Interval)
 	defer ticker.Stop()
 
-	for {
-		select {
-		case <-ticker.C:
-			if err := a.processUnanalyzedRepositories(); err != nil {
-				logger.Errorf("处理未分析的仓库失败: %v", err)
-			}
+	for range ticker.C {
+		if err := a.processUnanalyzedRepositories(); err != nil {
+			logger.Errorf("处理未分析的仓库失败: %v", err)
 		}
 	}
+	return nil
 }
 
 func (a *Analyzer) processUnanalyzedRepositories() error {
-	var repositories []api.Repository
+	var repositories []models.Repository
 
-	// 查找 ai_analysis 为空的仓库
-	result := a.db.Where("ai_analysis = '' OR ai_analysis IS NULL").
+	// 查找需要分析的仓库
+	result := a.db.Where("analysis_status = ? OR (analysis_status = ? AND updated_at > last_analyzed_at)",
+		"pending", "failed").
 		Limit(a.config.BatchSize).
 		Find(&repositories)
 
@@ -88,20 +89,60 @@ func (a *Analyzer) processUnanalyzedRepositories() error {
 		return fmt.Errorf("查询未分析的仓库失败: %v", result.Error)
 	}
 
-	logger.Infof("找到 %d 个未分析的仓库", len(repositories))
+	logger.Infof("找到 %d 个需要分析的仓库", len(repositories))
 
 	for _, repo := range repositories {
 		logger.Infof("正在分析仓库: %s", repo.FullName)
 
+		// 更新状态为分析中
+		if err := a.db.Model(&repo).Updates(map[string]interface{}{
+			"analysis_status": "analyzing",
+		}).Error; err != nil {
+			logger.Errorf("更新仓库 %s 的状态失败: %v", repo.FullName, err)
+			continue
+		}
+
+		// 分析仓库
 		analysis, err := a.analyzeRepository(&repo)
 		if err != nil {
+			// 更新状态为失败
+			a.db.Model(&repo).Updates(map[string]interface{}{
+				"analysis_status": "failed",
+			})
 			logger.Errorf("分析仓库 %s 失败: %v", repo.FullName, err)
 			continue
 		}
 
-		// 更新仓库的 AI 分析结果
-		if err := a.db.Model(&repo).Update("ai_analysis", analysis).Error; err != nil {
-			logger.Errorf("更新仓库 %s 的分析结果失败: %v", repo.FullName, err)
+		// 保存分析结果到 ai_analysis 表
+		aiAnalysis := &models.AIAnalysis{
+			URL:          repo.URL,
+			Content:      analysis,
+			Status:       "completed",
+			ModelVersion: "deepseek-chat",
+		}
+
+		// 使用事务确保数据一致性
+		err = a.db.Transaction(func(tx *gorm.DB) error {
+			// 更新或创建分析结果
+			if err := tx.Where("url = ?", repo.URL).
+				Assign(aiAnalysis).
+				FirstOrCreate(aiAnalysis).Error; err != nil {
+				return err
+			}
+
+			// 更新仓库状态
+			if err := tx.Model(&repo).Updates(map[string]interface{}{
+				"analysis_status":  "completed",
+				"last_analyzed_at": time.Now(),
+			}).Error; err != nil {
+				return err
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			logger.Errorf("保存仓库 %s 的分析结果失败: %v", repo.FullName, err)
 			continue
 		}
 
@@ -114,82 +155,13 @@ func (a *Analyzer) processUnanalyzedRepositories() error {
 	return nil
 }
 
-func (a *Analyzer) analyzeRepository(repo *api.Repository) (string, error) {
-	prompt := fmt.Sprintf(`请用中文分析以下 GitHub 仓库，生成一段 100-500 字的总结，说明这个项目是做什么的，有什么用途和特点。
-仓库名称：%s
-仓库描述：%s
-主要语言：%s
-README 内容：
-%s
-
-1. **一句话类比**：像"XXX 领域的 Uber"或"XX 界的 ChatGPT"。
-2. **解决什么问题**：普通人能遇到的实际问题（例如"帮你自动整理手机照片"）。
-3. **谁会用这个**：目标用户（如"适合经常写文档的上班族"）。
-4. **不用它的麻烦**：对比手动操作的缺点（如"否则需要手动复制粘贴 100 次"）`, repo.FullName, repo.Description, repo.Language, repo.Readme)
-
-	request := DeepseekRequest{
-		Model: "deepseek-chat",
-		Messages: []ChatMessage{
-			{
-				Role:    "user",
-				Content: prompt,
-			},
-		},
-	}
-
-	jsonData, err := json.Marshal(request)
-	if err != nil {
-		return "", fmt.Errorf("序列化请求失败: %v", err)
-	}
-
-	req, err := http.NewRequest("POST", a.config.APIBaseURL, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return "", fmt.Errorf("创建请求失败: %v", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", a.config.APIKey))
-
-	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("发送请求失败: %v", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("API 请求失败，状态码: %d", resp.StatusCode)
-	}
-
-	var response DeepseekResponse
-	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		return "", fmt.Errorf("解析响应失败: %v", err)
-	}
-
-	if len(response.Choices) == 0 {
-		return "", fmt.Errorf("API 响应中没有内容")
-	}
-
-	return response.Choices[0].Message.Content, nil
-}
-
-// AnalyzeRepository 分析单个仓库信息并生成摘要
-func (a *Analyzer) AnalyzeRepository(c *gin.Context, repoName, description, readme string) (string, error) {
+func (a *Analyzer) analyzeRepository(repo *models.Repository) (string, error) {
 	logger := logger.WithFields(map[string]interface{}{
 		"service": "ai_analysis",
-		"repo":    repoName,
+		"repo":    repo.FullName,
 	})
 
-	// 确保上下文存在
-	if c == nil || c.Request == nil {
-		return "", fmt.Errorf("无效的上下文")
-	}
-
-	// 创建一个带有取消的上下文
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
-	defer cancel()
-
-	fmt.Printf("\n[AI分析] 开始处理项目: %s\n", repoName)
+	fmt.Printf("\n[AI分析] 开始处理项目: %s\n", repo.FullName)
 	logger.Info("开始分析仓库")
 
 	// 构建提示词
@@ -202,7 +174,7 @@ func (a *Analyzer) AnalyzeRepository(c *gin.Context, repoName, description, read
 
 项目名称：%s
 项目描述：%s
-README 内容：%s`, repoName, description, readme)
+README 内容：%s`, repo.FullName, repo.Description, repo.Readme)
 
 	fmt.Printf("[AI分析] 正在生成分析提示词...\n")
 	logger.WithField("prompt_length", len(prompt)).Debug("构建提示词完成")
@@ -229,7 +201,7 @@ README 内容：%s`, repoName, description, readme)
 	logger.Debug("准备发送请求到 Deepseek API")
 
 	// 创建 HTTP 请求
-	req, err := http.NewRequestWithContext(ctx, "POST", a.config.APIBaseURL, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", a.config.APIBaseURL, bytes.NewBuffer(jsonData))
 	if err != nil {
 		fmt.Printf("[AI分析] 错误: 创建 HTTP 请求失败: %v\n", err)
 		logger.WithError(err).Error("创建 HTTP 请求失败")
@@ -247,25 +219,29 @@ README 内容：%s`, repoName, description, readme)
 	req.Header.Set("Authorization", "Bearer "+a.config.APIKey)
 
 	// 创建 HTTP 客户端
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
 
 	// 记录开始时间
 	startTime := time.Now()
 
-	// 发送请求
-	fmt.Printf("[AI分析] 正在等待 AI 响应...\n")
-	resp, err := client.Do(req)
-	if err != nil {
-		select {
-		case <-ctx.Done():
-			fmt.Printf("[AI分析] 请求被取消\n")
-			logger.Info("请求被取消")
-			return "", context.Canceled
-		default:
-			fmt.Printf("[AI分析] 错误: 发送请求到 Deepseek API 失败: %v\n", err)
-			logger.WithError(err).Error("发送请求到 Deepseek API 失败")
-			return "", fmt.Errorf("发送请求到 Deepseek API 失败: %v", err)
+	// 发送请求，支持重试
+	var resp *http.Response
+	var lastErr error
+	for i := 0; i < a.config.MaxRetries; i++ {
+		resp, lastErr = client.Do(req)
+		if lastErr == nil {
+			break
 		}
+		logger.Warnf("第 %d 次请求失败: %v, 准备重试...", i+1, lastErr)
+		time.Sleep(time.Second * time.Duration(i+1))
+	}
+
+	if lastErr != nil {
+		fmt.Printf("[AI分析] 错误: 发送请求到 Deepseek API 失败: %v\n", lastErr)
+		logger.WithError(lastErr).Error("发送请求到 Deepseek API 失败")
+		return "", fmt.Errorf("发送请求到 Deepseek API 失败: %v", lastErr)
 	}
 	defer resp.Body.Close()
 
