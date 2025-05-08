@@ -65,7 +65,7 @@ func NewAnalyzer(db *gorm.DB, config *Config) *Analyzer {
 
 func (a *Analyzer) Start() error {
 	logger.Info("启动 AI 分析服务...")
-	ticker := time.NewTicker(a.config.Interval)
+	ticker := time.NewTicker(time.Second * 3)
 	defer ticker.Stop()
 
 	for range ticker.C {

@@ -264,9 +264,9 @@ func main() {
 		fmt.Printf("启动爬虫服务...\n")
 
 		// 立即执行一次
-		if err := crawler.Start(); err != nil {
-			fmt.Printf("爬取失败: %v\n", err)
-		}
+		// if err := crawler.Start(); err != nil {
+		// 	fmt.Printf("爬取失败: %v\n", err)
+		// }
 
 		for {
 			select {
