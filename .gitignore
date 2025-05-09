@@ -36,6 +36,16 @@ logs/
 *.tmp
 *.temp
 
+# Python虚拟环境
+venv/
+
+# 其他常见忽略
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
 # 其他
 coverage.txt
 profile.out 
